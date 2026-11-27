@@ -1,7 +1,0 @@
-services:
-  - type: web
-    name: sensibilidad-bancaria-bce
-    runtime: python
-    plan: free
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:server --workers 1 --timeout 120
