@@ -86,34 +86,25 @@ def grafico_dia_a_dia(ticker):
     return fig
 
 
-def grafico_banco(ticker, dias, cambio_pb, nombre_modelo):
-    """Dispersión: cada punto es una decisión del BCE (cambio de tipos vs reacción del banco)."""
+def grafico_banco(ticker, dias):
+    """Barras: qué hizo el banco frente al mercado después de cada decisión del BCE."""
     tabla = eventos[dias]
+    colores = [AZUL if c > 0 else NARANJA for c in tabla["cambio_pb"]]  # azul = subida, naranja = bajada
+    etiquetas = [f"{c:+.0f} pb" for c in tabla["cambio_pb"]]
 
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=tabla["cambio_pb"], y=tabla[ticker], mode="markers",
-                             name="Decisión del BCE", marker=dict(color=AZUL, size=11),
-                             text=tabla["fecha_anuncio"].dt.strftime("%d/%m/%Y"),
-                             hovertemplate="%{text}<br>Cambio: %{x:+.0f} pb<br>"
-                                           "Reacción: %{y:+.2f} %<extra></extra>"))
-
-    # Línea del modelo elegido
-    eje_x = list(range(-75, 80, 5))
-    eje_y = modelos[dias][ticker][nombre_modelo].predict([[v] for v in eje_x])
-    fig.add_trace(go.Scatter(x=eje_x, y=eje_y, mode="lines", name=nombre_modelo,
-                             line=dict(color="black", width=2)))
-
-    # Punto del escenario elegido
-    y_escenario = modelos[dias][ticker][nombre_modelo].predict([[cambio_pb]])[0]
-    fig.add_trace(go.Scatter(x=[cambio_pb], y=[y_escenario], mode="markers", name="Escenario",
-                             marker=dict(color="white", size=14, line=dict(color="black", width=3))))
-
-    fig.add_hline(y=0, line_color=GRIS, line_width=1)
+    fig = go.Figure(go.Bar(
+        x=tabla["fecha_anuncio"].dt.strftime("%d/%m/%Y"),
+        y=tabla[ticker],
+        marker_color=colores,
+        text=etiquetas,
+        textposition="outside",
+        hovertemplate="%{x} (%{text})<br>Reacción: %{y:+.2f} %<extra></extra>",
+    ))
+    fig.add_hline(y=0, line_color="black", line_width=1)
     fig.update_layout(
-        height=460, margin=dict(l=10, r=20, t=40, b=40), plot_bgcolor="white", separators=",.",
-        xaxis_title="Cambio del tipo de depósito (pb)",
+        height=460, margin=dict(l=10, r=20, t=20, b=80), plot_bgcolor="white", separators=",.",
+        xaxis_title="Fecha del anuncio del BCE",
         yaxis_title="Reacción frente al mercado (%)",
-        legend=dict(orientation="h", y=1.1),
     )
     return fig
 
@@ -197,7 +188,8 @@ contenido = html.Main(className="contenido", children=[
         dcc.Tab(label="Banco", children=[
             html.Div(className="tarjeta", children=[
                 html.H3(id="titulo-banco"),
-                html.P("Cada punto es una decisión del BCE. Pasa el ratón para ver la fecha.",
+                html.P("Cada barra es una decisión del BCE. Azul: subida de tipos · Naranja: bajada. "
+                       "Encima de cada barra, el cambio del tipo.",
                        className="nota"),
                 dcc.Graph(id="grafico-banco"),
             ]),
@@ -317,8 +309,8 @@ def actualizar(tipo, ticker, dias, nombre_modelo):
         ficha,
         f"{fila['banco']}: reacción en los días siguientes al anuncio",
         grafico_dia_a_dia(ticker),
-        f"{fila['banco']}: cambio de tipos frente a reacción ({texto_dias(dias)})",
-        grafico_banco(ticker, dias, cambio_pb, nombre_modelo),
+        f"{fila['banco']}: reacción tras cada decisión del BCE ({texto_dias(dias)})",
+        grafico_banco(ticker, dias),
         tabla_fiabilidad,
     )
 
